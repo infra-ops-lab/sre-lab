@@ -1,0 +1,20 @@
+# kube-prometheus-stack values for a laptop lab.
+# Prometheus picks up every ServiceMonitor and PrometheusRule in the cluster (not only the chart's own).
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+    retention: 2d
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+grafana:
+  adminPassword: sre-lab          # local lab only
+# kind runs these control-plane components on localhost, so Prometheus can't scrape them.
+# Without this they show up as permanently firing TargetDown alerts.
+kubeEtcd: { enabled: false }
+kubeScheduler: { enabled: false }
+kubeControllerManager: { enabled: false }
+kubeProxy: { enabled: false }

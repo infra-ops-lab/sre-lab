@@ -1,8 +1,5 @@
-# Personal content and local progress: never committed
-private/
-practice/
 site/
-app/app.pid
-app/app.log
+.venv/
 __pycache__/
 .DS_Store
+drafts/

@@ -1,0 +1,53 @@
+site_name: SRE Lab
+site_description: A hands-on Site Reliability Engineering course for platform and DevOps engineers. SLOs, observability, alerting, incidents, troubleshooting, safe change, capacity, resilience and reliable platform design, with labs on kind.
+site_url: https://infra-ops-lab.github.io/sre-lab/
+repo_url: https://github.com/infra-ops-lab/sre-lab
+repo_name: infra-ops-lab/sre-lab
+edit_uri: edit/main/docs/
+
+nav:
+  - Home: index.md
+  - Lab environment: setup.md
+  - "0. Why SRE":
+      - Lesson: 00-why-sre/index.md
+      - Test yourself: 00-why-sre/test-yourself.md
+  - Coming next: roadmap.md
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: indigo
+      toggle: { icon: material/weather-night, name: Dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: indigo
+      toggle: { icon: material/weather-sunny, name: Light mode }
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.instant
+    - search.highlight
+    - toc.follow
+
+markdown_extensions:
+  - tables
+  - attr_list
+  - md_in_html
+  - footnotes
+  - toc: { permalink: true }
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight: { anchor_linenums: true }
+  - pymdownx.inlinehilite
+  - pymdownx.tasklist: { custom_checkbox: true }
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format

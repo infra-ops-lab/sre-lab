@@ -1,0 +1,41 @@
+# Synthetic users for the checkout service.
+# Change the error or slow-request share with:
+#   kubectl -n shop set env deploy/loadgen ERROR_PCT=20
+#   kubectl -n shop set env deploy/loadgen SLOW_PCT=10
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgen
+  namespace: shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: loadgen }
+  template:
+    metadata:
+      labels: { app: loadgen }
+    spec:
+      containers:
+        - name: loadgen
+          image: curlimages/curl:8.17.0
+          env:
+            - { name: TARGET, value: "http://checkout-podinfo.shop:9898" }
+            - { name: ERROR_PCT, value: "0" }    # % of requests that hit /status/500
+            - { name: SLOW_PCT, value: "0" }     # % of requests that hit /delay/2 (2 s response)
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "loadgen: errors=${ERROR_PCT}% slow=${SLOW_PCT}% -> ${TARGET}"
+              while true; do
+                i=1
+                while [ $i -le 100 ]; do
+                  if [ $i -le "$ERROR_PCT" ]; then path=/status/500
+                  elif [ $i -le $((ERROR_PCT + SLOW_PCT)) ]; then path=/delay/2
+                  else path=/; fi
+                  curl -s -o /dev/null --max-time 5 "${TARGET}${path}" &
+                  i=$((i + 1)); sleep 0.05
+                done
+                wait
+              done
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }

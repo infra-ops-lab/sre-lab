@@ -1,34 +1,32 @@
-# SRE Practice Lab
+# SRE Lab
 
-A self-study lab for Site Reliability Engineering: 100+ questions with model answers, timed drills, mock rounds and a 14-day plan.
+A hands-on **Site Reliability Engineering** course for platform and DevOps engineers.
 
-**Live site:** https://infra-ops-lab.github.io/sre-lab/
+**Website:** https://infra-ops-lab.github.io/sre-lab/
 
-## What's inside
+Each module has a lesson (objectives, why it matters, concepts, industry practice, common mistakes), a lab on a local kind cluster, and a **Test yourself** section with answers.
 
-| Area | Topics |
+| # | Module |
 |---|---|
-| Fundamentals | How to structure answers, SRE vs DevOps, toil, error budget policy |
-| SLOs | SLI/SLO/SLA, error budgets, burn-rate alerting, SLOs for a Kubernetes platform |
-| Observability | Golden signals, RED/USE, alert design, cardinality, Prometheus at scale, OpenTelemetry |
-| Incidents | Incident command, severity, mitigation first, blameless postmortems, on-call health |
-| Troubleshooting | Kubernetes (16 scenarios), Linux (11), networking (5) |
-| Design | Safe releases, capacity, resilience patterns, chaos, HA control plane, etcd, multi-region, multi-tenancy |
-| Coding | Practical Python (log parsing, health checks, Kubernetes client) and easy data-structure questions |
-| Behavioural | STAR-L stories and how to structure them |
+| 0 | Why SRE |
+| 1 | SLOs and error budgets |
+| 2 | Observability |
+| 3 | Alerting and on-call |
+| 4 | Incidents and postmortems |
+| 5-12 | Troubleshooting, safe change, capacity, resilience, platform design, toil, culture, capstone |
 
-## How to use it
+See the [roadmap](docs/roadmap.md) for what's published.
 
-- **Q&A drill:** answer out loud first, then open the model answer and rate yourself.
-- **Interview me:** random timed questions; weak ones come back more often.
-- **Mock rounds:** practice mode with hints, or timed real mode with self-scoring.
-- Progress is saved in your browser (export/import on the Help page).
+## Repository layout
 
-## Run it locally
-
-```bash
-python3 app/server.py            # http://localhost:4300
-python3 scripts/build-site.py    # static build into ./site
+```text
+docs/     course pages (MkDocs Material)
+labs/     lab files: kind cluster, monitoring values, demo app, per-module manifests
 ```
 
-Questions live in `app/content/qa-*.txt` (`## Section | Tag`, then `Q:`, `A:`, `F:` follow-ups). Corrections and new questions are welcome.
+Build the site locally:
+
+```bash
+pip install -r requirements-docs.txt
+mkdocs serve        # http://127.0.0.1:8000
+```
