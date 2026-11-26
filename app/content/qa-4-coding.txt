@@ -1,0 +1,193 @@
+## Coding round (Python) | Coding
+Q: Reverse a string, and reverse the words in a sentence.
+A: Easy warm-ups (common in SRE phone screens). Say the complexity.
+```
+def reverse(s: str) -> str:
+    return s[::-1]                      # O(n)
+
+def reverse_manual(s: str) -> str:      # if they say "no slicing"
+    chars = list(s)
+    i, j = 0, len(chars) - 1
+    while i < j:
+        chars[i], chars[j] = chars[j], chars[i]
+        i += 1; j -= 1
+    return "".join(chars)
+
+def reverse_words(s: str) -> str:
+    return " ".join(reversed(s.split()))   # "hello sre world" -> "world sre hello"
+```
+F: Is it a palindrome, ignoring case and punctuation? (Clean with `[c.lower() for c in s if c.isalnum()]` and compare to its reverse.)
+
+Q: Implement an LRU cache with get and put in O(1).
+A: Use an ordered dict (a hash map + doubly linked list underneath).
+```
+from collections import OrderedDict
+
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.cap = capacity
+        self.data = OrderedDict()
+
+    def get(self, key):
+        if key not in self.data:
+            return -1
+        self.data.move_to_end(key)          # mark as most recently used
+        return self.data[key]
+
+    def put(self, key, value):
+        if key in self.data:
+            self.data.move_to_end(key)
+        self.data[key] = value
+        if len(self.data) > self.cap:
+            self.data.popitem(last=False)   # evict least recently used
+```
+F: Implement it without OrderedDict. (dict of key → node, plus your own doubly linked list with head/tail sentinels.) Where is LRU used in infrastructure? (Page cache, CDN, DNS caches.)
+
+Q: Parse an access log and print the top 10 client IPs and the 5xx error rate.
+A: The most common SRE coding task. Stream the file (don't load it all), handle bad lines.
+```
+import sys
+from collections import Counter
+
+def analyse(path):
+    ips, total, errors = Counter(), 0, 0
+    with open(path) as f:
+        for line in f:
+            parts = line.split()
+            if len(parts) < 9:              # skip malformed lines
+                continue
+            ip, status = parts[0], parts[8] # common log format
+            total += 1
+            ips[ip] += 1
+            if status.startswith("5"):
+                errors += 1
+    for ip, n in ips.most_common(10):
+        print(f"{n:8d} {ip}")
+    if total:
+        print(f"5xx rate: {100 * errors / total:.2f}% of {total} requests")
+
+if __name__ == "__main__":
+    analyse(sys.argv[1])
+```
+- Shell version they may ask first: `awk '{print $1}' access.log | sort | uniq -c | sort -rn | head -10`.
+F: The log is 50 GB. What changes? (Already streaming line by line; parallelise by splitting the file; or use the shell pipeline. Memory is bounded by the number of unique IPs.) Requests per minute? (Parse the timestamp, bucket by minute.)
+
+Q: Write a health checker that calls a list of URLs with a timeout and retries with backoff.
+A:
+```
+import time, random, urllib.request
+
+def check(url, attempts=3, timeout=2.0):
+    last = "no attempt"
+    for i in range(attempts):
+        try:
+            with urllib.request.urlopen(url, timeout=timeout) as r:
+                if 200 <= r.status < 300:
+                    return True, r.status
+                last = f"HTTP {r.status}"
+        except Exception as e:              # timeout, DNS, refused, HTTP 4xx/5xx
+            last = str(e)
+        if i < attempts - 1:
+            time.sleep((2 ** i) * 0.2 + random.uniform(0, 0.1))   # backoff + jitter
+    return False, last
+
+for u in ["https://example.com", "http://localhost:9"]:
+    ok, detail = check(u)
+    print(("UP  " if ok else "DOWN"), u, detail)
+```
+- Say why: timeout so a dead host can't hang the checker; backoff + jitter so retries don't hammer a struggling service.
+F: Check 1,000 URLs quickly? (`concurrent.futures.ThreadPoolExecutor(max_workers=50)` or asyncio with aiohttp.)
+
+Q: Using the Kubernetes Python client, list pods that are not Running/Succeeded or have restarted more than 5 times.
+A:
+```
+from kubernetes import client, config
+
+config.load_kube_config()              # in-cluster: config.load_incluster_config()
+v1 = client.CoreV1Api()
+
+for p in v1.list_pod_for_all_namespaces(watch=False).items:
+    restarts = sum(cs.restart_count for cs in (p.status.container_statuses or []))
+    if p.status.phase not in ("Running", "Succeeded") or restarts > 5:
+        print(f"{p.metadata.namespace}/{p.metadata.name} phase={p.status.phase} restarts={restarts}")
+```
+- kubectl equivalent: `kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded`.
+F: Run it as a CronJob in the cluster. What RBAC does it need? (A ServiceAccount with a ClusterRole that can get/list pods.)
+
+Q: Implement a token-bucket rate limiter.
+A:
+```
+import time
+
+class TokenBucket:
+    def __init__(self, rate: float, capacity: int):
+        self.rate, self.capacity = rate, capacity   # tokens per second, burst size
+        self.tokens = capacity
+        self.last = time.monotonic()
+
+    def allow(self) -> bool:
+        now = time.monotonic()
+        self.tokens = min(self.capacity, self.tokens + (now - self.last) * self.rate)
+        self.last = now
+        if self.tokens >= 1:
+            self.tokens -= 1
+            return True
+        return False
+```
+- Allows bursts up to `capacity`, then a steady `rate`. Use `time.monotonic()` (not wall clock, which can jump).
+F: Make it work across 10 API servers. (Shared state in Redis with an atomic Lua script, or approximate per-instance limits = global / N.)
+
+Q: Find duplicate files in a directory tree.
+A: Group by size first (cheap), then hash only same-size files.
+```
+import os, hashlib
+from collections import defaultdict
+
+def dupes(root):
+    by_size = defaultdict(list)
+    for d, _, files in os.walk(root):
+        for f in files:
+            p = os.path.join(d, f)
+            try:
+                by_size[os.path.getsize(p)].append(p)
+            except OSError:
+                pass
+    for paths in (v for v in by_size.values() if len(v) > 1):
+        by_hash = defaultdict(list)
+        for p in paths:
+            h = hashlib.sha256()
+            with open(p, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(chunk)
+            by_hash[h.hexdigest()].append(p)
+        for group in by_hash.values():
+            if len(group) > 1:
+                print(group)
+```
+F: Why read in chunks? (Large files would not fit in memory.)
+
+Q: Bash: find the 5 largest files under /var, and kill processes using more than 2 GB RSS.
+A:
+```
+# 5 largest files, staying on one filesystem
+find /var -xdev -type f -printf '%s %p\n' 2>/dev/null | sort -rn | head -5
+
+# processes using more than 2 GB RSS (RSS in KB in ps)
+ps -eo pid,rss,comm --sort=-rss | awk 'NR>1 && $2 > 2*1024*1024 {print $1, $2/1024 " MB", $3}'
+```
+- Show judgement: print first, confirm, then `kill` (SIGTERM before SIGKILL). Never blind `kill -9` in production.
+F: What does `set -euo pipefail` do? (Exit on error, error on unset variables, a pipeline fails if any command in it fails.)
+
+Q: Two-sum / find pairs that add up to a target (easy DSA).
+A: Hash map, O(n).
+```
+def two_sum(nums, target):
+    seen = {}                       # value -> index
+    for i, n in enumerate(nums):
+        if target - n in seen:
+            return seen[target - n], i
+        seen[n] = i
+    return None
+```
+- Say the brute force (O(n²)) first, then improve. Interviewers want to hear the trade-off.
+F: What if the list is sorted? (Two pointers from both ends, O(1) extra memory.)

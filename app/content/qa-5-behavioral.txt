@@ -1,0 +1,59 @@
+## Behavioural | Behavioral
+Q: Tell me about yourself (SRE version, 2 minutes).
+A: Past → present → why this role. Practise until it's smooth.
+- **Foundation:** where you started (systems, networking, development) in one sentence.
+- **Scale and operations:** the biggest system you ran or supported, with one number (clusters, users, requests/s).
+- **Now:** what you own today and the hardest problems you solve (incidents, escalations, automation).
+- **Why SRE:** "I enjoy making systems reliable and measurable: fewer incidents, faster recovery, less toil."
+- Close with one line about why this company or team.
+F: What part of your work do you enjoy most? What do you want to learn next?
+
+Q: Tell me about the biggest outage or escalation you handled.
+A: Use STAR-L with numbers. Shape:
+- **Situation:** what broke, user impact, how it was detected. **[fill]**
+- **Task:** your role (incident lead, escalation owner, responder).
+- **Actions:** first hypothesis and how you tested it; the mitigation; how you coordinated teams; the real root cause. **[fill]**
+- **Result:** time to mitigate, time to resolve, impact numbers. **[fill]**
+- **Learning:** the systemic fix (alert, automation, test, runbook) so it never happened again.
+F: What would you do differently? What did the postmortem change?
+
+Q: Tell me about a time you reduced toil.
+A: Pick something manual and repetitive you automated (certificate renewals, provisioning, upgrades, ticket handling).
+- Before: what was manual, how many hours/week, how many errors or outages it caused. **[fill]**
+- What you built and how you rolled it out safely.
+- After: hours saved, incidents avoided, time per task. **[fill]**
+F: How did you decide this was the most valuable thing to automate?
+
+Q: Tell me about a disagreement with a colleague or manager on a technical decision.
+A: Disagree with data, propose an experiment, commit once decided.
+- The decision, both positions, how you gathered evidence (test, metrics, a small trial), the outcome, what you learned.
+- Show you can lose an argument gracefully and still support the decision.
+F: What if you'd been overruled and you were right?
+
+Q: How do you balance reliability work against feature work?
+A:
+- Use data, not opinion: SLO and error budget status, incident trends, toil hours.
+- Budget healthy → features go fast; budget burning → reliability work moves up.
+- Make reliability work visible in the same backlog with business impact ("this removes 30% of our pages").
+F: Product wants features, you want reliability. Who wins?
+
+Q: Tell me about a mistake you made in production.
+A: Everyone has one; hiding it is a red flag.
+- What you did, the impact, how you found out, how you fixed it fast, what you changed so nobody can repeat it (guardrail, review, automation).
+- Blameless tone: the lesson is about the system, and about your own habits.
+F: How did you tell your manager or customer?
+
+Q: How do you mentor or raise the level of the team?
+A:
+- A specific person or group, what you taught (runbooks, RCA method, on-call shadowing, tooling), the measurable outcome.
+- Multiplying yourself: standards, docs and tools others use without you.
+F: How do you onboard a new engineer into on-call?
+
+Q: What questions do you ask the interviewer at the end?
+A: Ask 2-3 that show SRE thinking:
+- "How do you use SLOs and error budgets today? Who decides when a budget is exhausted?"
+- "What's the on-call load like: pages per week, how many at night?"
+- "What was the last big incident, and what changed after the postmortem?"
+- "What does success look like for this role in the first 6 months?"
+- "How is reliability ownership split between SRE and development teams?"
+F: (These also tell you whether the team is healthy.)
