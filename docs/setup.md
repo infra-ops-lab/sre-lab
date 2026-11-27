@@ -34,6 +34,8 @@ sre-lab-worker          Ready    <none>          45s   v1.37.0
 sre-lab-worker2         Ready    <none>          45s   v1.37.0
 ```
 
+Right after `kind create`, nodes can show `NotReady` for about 30 seconds while the network plugin starts. That's normal; the next step waits for them anyway.
+
 ## 2. Install the monitoring stack
 
 [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) installs Prometheus, Alertmanager, Grafana, node-exporter and kube-state-metrics.

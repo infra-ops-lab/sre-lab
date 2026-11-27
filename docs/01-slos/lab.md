@@ -14,6 +14,8 @@ Each part starts with a **task**. Try it yourself first, then open the solution.
 
 checkout records every request in a Prometheus histogram called `http_request_duration_seconds`, labelled by `path` and `status`.
 
+If you've only just finished the setup, wait about 2 minutes first. The `[1m]` rates need a minute of data, and `/metrics` appears only after Prometheus has scraped checkout a few times.
+
 **Task:** in the Prometheus UI, show the request rate per path and status. Which series are real users, and which aren't?
 
 ??? success "Solution"
@@ -160,11 +162,11 @@ kubectl -n shop set env deploy/loadgen ERROR_PCT=0
     |---|---|---|---|
     | 0 | 60 | 24% | page, ticket |
     | 3 minutes | 31 | 20% | page, ticket |
-    | **6 minutes** | **0** | 16% | page, ticket |
+    | **6-7 minutes** | **0** | 16% | page, ticket |
     | 15 minutes | 0 | 11% | page, ticket |
     | **28 minutes** | 0 | 2.5% | **ticket only**: the page has cleared |
 
-    - The **5-minute burn rate** drops to 0 within about 6 minutes. Errors have stopped.
+    - The **5-minute burn rate** drops to 0 within about 6-7 minutes. Errors have stopped.
     - The **page keeps firing for almost half an hour** after the fix. The 6x condition needs both the 30m **and** the 6h ratio above 3%, and the 30m window still contains the bad minutes. The page clears only when they leave it.
     - The **ticket** keeps firing much longer. The 1x condition (6h and 3d above 0.5%) remembers the incident for hours. That's on purpose: someone should look at what burned the budget, but in working hours.
 
@@ -191,20 +193,32 @@ kubectl -n shop set env deploy/loadgen ERROR_PCT=0
 kubectl -n shop set env deploy/loadgen SLOW_PCT=5
 ```
 
-Watch:
+Watch these. The third one shows how close the slow-leak ticket condition is to firing:
 
 ```promql
 slo:current_burn_rate:ratio{sloth_slo="requests-latency"}
 ALERTS{alertname="CheckoutLatencyBudgetBurn"}
+slo:sli_error:ratio_rate6h{sloth_slo="requests-latency"}
 ```
 
 | Time | Latency burn rate (5m) | Alerts |
 |---|---|---|
-| 1 minute | 0.6 | none |
-| 5 minutes | 4.4 | **latency ticket** |
-| 6 minutes onwards | **5.0**, steady | latency ticket, no page |
+| 1 minute | about 0.5 | none |
+| 5 minutes | about 4 | none yet, or the latency ticket on a very new cluster |
+| 6 minutes onwards | **5.0**, steady | **no page**; the latency **ticket** fires when the 6h ratio passes **1%** |
 
-The burn rate settles at exactly the predicted 5. The ticket fires after about 5 minutes. On a cluster with full history it would take much longer. Each ticket condition needs **both** of its windows above the threshold. At 5% slow, the 6h window passes 0.5% after about 36 minutes, but the 3d window needs about **7 hours**. The 2h + 1d condition takes even longer. That's the short-history effect from Part 4 again. In production, a slow leak like this one is found the same working day, not within minutes.
+The burn rate settles at exactly the predicted 5, and it never pages.
+
+**When the ticket fires depends on how long your cluster has been running.** The ticket's slow-leak condition is the 6h **and** 3d ratios above 1 × the budget, which is **1%** for this SLO. On a lab cluster both windows contain everything since setup, so the ticket fires once slow requests make up 1% of all the traffic Prometheus has seen. In two test runs:
+
+| Cluster age when the slowness started | Ticket fired after |
+|---|---|
+| about 15 minutes | 5 minutes |
+| about 1 hour | 13 minutes |
+
+If yours hasn't fired yet, watch the 6h ratio climb towards `0.01`.
+
+In production, with full history, the windows really are 6 hours and 3 days. At 5% slow, the 6h ratio reaches 1% after about 72 minutes, but the 3d ratio needs about **14 hours**. The other ticket condition (2h and 1d above 3%) also needs about 14 hours. So a slow leak like this raises a ticket within a day, long before it spends the month's budget. At 5x, the budget lasts 6 days.
 
 This is the error budget at work. A small, steady problem gets a ticket, not a 3 a.m. page. A threshold alert such as "p99 > 500 ms" would have paged as soon as the slow requests started.
 
