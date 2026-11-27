@@ -11,6 +11,10 @@ nav:
   - "0. Why SRE":
       - Lesson: 00-why-sre/index.md
       - Test yourself: 00-why-sre/test-yourself.md
+  - "1. SLOs and error budgets":
+      - Lesson: 01-slos/index.md
+      - Lab: 01-slos/lab.md
+      - Test yourself: 01-slos/test-yourself.md
   - Coming next: roadmap.md
 
 theme:

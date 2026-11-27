@@ -1,0 +1,55 @@
+# SLOs for the checkout service, in Sloth's Kubernetes format.
+# Generate Prometheus rules with:  ./generate.sh   (uses the Sloth container image)
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: checkout
+  namespace: shop
+spec:
+  service: checkout
+  labels:
+    owner: shop-team
+  slos:
+    # SLI 1: availability. Good = not a 5xx. Probes and /metrics are not user traffic.
+    - name: requests-availability
+      objective: 99.5          # lab target; real services often use 99.9
+      description: "99.5% of checkout requests succeed (non-5xx) over 30 days."
+      sli:
+        events:
+          # "or vector(0)": with zero errors there are no 5xx series at all, and the SLI would be empty instead of 0.
+          errorQuery: sum(rate(http_request_duration_seconds_count{namespace="shop", job="checkout-podinfo", path!~"healthz|readyz|metrics", status=~"5.."}[{{.window}}])) or vector(0)
+          totalQuery: sum(rate(http_request_duration_seconds_count{namespace="shop", job="checkout-podinfo", path!~"healthz|readyz|metrics"}[{{.window}}]))
+      alerting:
+        name: CheckoutAvailabilityBudgetBurn
+        labels:
+          category: availability
+        annotations:
+          summary: "Checkout is burning its availability error budget too fast"
+          runbook_url: "https://infra-ops-lab.github.io/sre-lab/03-alerting/runbook-checkout/"
+        pageAlert:
+          labels: { severity: page }
+        ticketAlert:
+          labels: { severity: ticket }
+
+    # SLI 2: latency. Good = answered in under 0.5 s.
+    - name: requests-latency
+      objective: 99
+      description: "99% of checkout requests are served in under 500 ms over 30 days."
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(http_request_duration_seconds_count{namespace="shop", job="checkout-podinfo", path!~"healthz|readyz|metrics"}[{{.window}}]))
+            -
+            sum(rate(http_request_duration_seconds_bucket{namespace="shop", job="checkout-podinfo", path!~"healthz|readyz|metrics", le="0.5"}[{{.window}}]))
+          totalQuery: sum(rate(http_request_duration_seconds_count{namespace="shop", job="checkout-podinfo", path!~"healthz|readyz|metrics"}[{{.window}}]))
+      alerting:
+        name: CheckoutLatencyBudgetBurn
+        labels:
+          category: latency
+        annotations:
+          summary: "Checkout is too slow for too many users"
+          runbook_url: "https://infra-ops-lab.github.io/sre-lab/03-alerting/runbook-checkout/"
+        pageAlert:
+          labels: { severity: page }
+        ticketAlert:
+          labels: { severity: ticket }
