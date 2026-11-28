@@ -1,0 +1,29 @@
+# Added on top of labs/setup/monitoring-values.yaml:
+#   helm upgrade monitoring prometheus-community/kube-prometheus-stack --version 94.0.0 -n monitoring \
+#     -f ../setup/monitoring-values.yaml -f alertmanager-values.yaml
+alertmanager:
+  config:
+    route:
+      receiver: tickets                 # default: anything not matched below is a ticket
+      group_by: [alertname, sloth_service]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        - receiver: "null"              # the always-firing Watchdog: used as a dead man's switch, not a page
+          matchers: [alertname = "Watchdog"]
+        - receiver: pager
+          matchers: [severity = "page"]
+        - receiver: tickets
+          matchers: [severity =~ "ticket|warning"]
+    inhibit_rules:
+      # If the page for an alert is firing, don't also send the ticket for the same alert.
+      - source_matchers: [severity = "page"]
+        target_matchers: [severity = "ticket"]
+        equal: [alertname, sloth_service]
+    receivers:
+      - name: "null"
+      - name: pager
+        webhook_configs: [{ url: "http://pager.monitoring:8080/", send_resolved: true }]
+      - name: tickets
+        webhook_configs: [{ url: "http://tickets.monitoring:8080/", send_resolved: true }]

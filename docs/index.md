@@ -21,8 +21,8 @@ By the end of the course you will be able to:
 - [x] Build **observability** that answers "are users hurting?" and "where is the problem?"
 - [x] Replace noisy threshold alerts with **burn-rate alerts** and write useful runbooks.
 - [x] Lead an **incident** and write a **blameless postmortem** that leads to real fixes.
-- [ ] Troubleshoot Kubernetes, Linux and networks methodically *(modules 5-6, coming next)*.
-- [ ] Ship changes safely with canaries and automated rollback *(module 7)*.
+- [x] Troubleshoot Kubernetes, Linux and networks methodically.
+- [x] Ship changes safely with canaries and automated rollback.
 - [ ] Plan capacity, design for failure and run chaos experiments *(modules 8-10)*.
 
 ## Course map
@@ -32,9 +32,12 @@ By the end of the course you will be able to:
 | 0 | [Why SRE](00-why-sre/index.md) | Where SRE fits, what the industry expects, a skills self-check |
 | 1 | [SLOs and error budgets](01-slos/index.md) | SLOs for a real service with Sloth; watch the budget burn |
 | 2 | [Observability](02-observability/index.md) | RED and USE with PromQL, a hidden CPU limit, a dashboard as code, a cardinality explosion |
-| 3 | Alerting and on-call *(coming soon)* | Alert routing, inhibition, triaging noisy alerts, runbooks |
-| 4 | Incidents and postmortems *(coming soon)* | A game day: a bad release, incident roles, rollback, postmortem |
-| 5-12 | [Coming next](roadmap.md) | Troubleshooting, safe change, capacity, resilience, platform design, toil, culture, capstone |
+| 3 | [Alerting and on-call](03-alerting/index.md) | Routing, inhibition and silences, triaging a noisy default install, a runbook, reviewing alert PRs |
+| 4 | [Incidents and postmortems](04-incidents/index.md) | A game day: a bad release, incident roles, rollback, a timeline from data, a blameless postmortem |
+| 5 | [Troubleshooting Kubernetes](05-k8s-troubleshooting/index.md) | Eight broken services to fix without being told what's wrong, and a DNS outage the SLO can't see |
+| 6 | [Linux and network troubleshooting](06-linux-network/index.md) | Latency, packet loss, a CPU hog and a full disk found with Linux tools; what one DNS lookup costs |
+| 7 | [Safe change](07-safe-change/index.md) | An Argo Rollouts canary with automated analysis that rolls a bad release back by itself |
+| 8-12 | [Coming next](roadmap.md) | Capacity, resilience, platform design, toil, culture, capstone |
 
 ## How each module works
 

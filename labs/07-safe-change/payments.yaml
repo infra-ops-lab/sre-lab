@@ -1,0 +1,103 @@
+# Module 7: the "payments" service, deployed as an Argo Rollouts canary.
+# 5 replicas, so each canary step of 20% is one pod. An AnalysisTemplate checks the canary pods'
+# error ratio in Prometheus every 30 seconds and aborts the rollout if it's too high.
+apiVersion: v1
+kind: Namespace
+metadata: { name: pay }
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata: { name: canary-error-ratio, namespace: pay }
+spec:
+  args:
+    - name: canary-hash
+  metrics:
+    - name: error-ratio
+      initialDelay: 60s          # let the canary pods take traffic and be scraped first
+      interval: 30s
+      failureLimit: 1            # two failed measurements and the rollout is aborted
+      successCondition: result[0] < 0.02
+      provider:
+        prometheus:
+          address: http://monitoring-kube-prometheus-prometheus.monitoring:9090
+          query: |
+            (sum(rate(http_request_duration_seconds_count{namespace="pay", path!~"healthz|readyz|metrics", status=~"5..", rollouts_pod_template_hash="{{args.canary-hash}}"}[1m])) or vector(0))
+            /
+            sum(rate(http_request_duration_seconds_count{namespace="pay", path!~"healthz|readyz|metrics", rollouts_pod_template_hash="{{args.canary-hash}}"}[1m]))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata: { name: payments, namespace: pay }
+spec:
+  replicas: 5
+  revisionHistoryLimit: 3
+  selector: { matchLabels: { app: payments } }
+  template:
+    metadata: { labels: { app: payments } }
+    spec:
+      containers:
+        - name: payments
+          image: ghcr.io/stefanprodan/podinfo:6.17.0
+          command: ["./podinfo", "--port=9898", "--level=info", "--ui-message=payments v1"]
+          ports: [{ name: http, containerPort: 9898 }]
+          readinessProbe: { httpGet: { path: /readyz, port: http }, periodSeconds: 5 }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+  strategy:
+    canary:
+      analysis:                  # runs in the background from the first step until the rollout ends
+        templates: [{ templateName: canary-error-ratio }]
+        startingStep: 1
+        args:
+          - name: canary-hash
+            valueFrom: { podTemplateHashValue: Latest }
+      steps:
+        - setWeight: 20          # 1 of 5 pods runs the new version
+        - pause: { duration: 2m }
+        - setWeight: 60
+        - pause: { duration: 1m }
+        # then 100%
+---
+apiVersion: v1
+kind: Service
+metadata: { name: payments, namespace: pay, labels: { app: payments } }
+spec:
+  selector: { app: payments }
+  ports: [{ name: http, port: 9898, targetPort: http }]
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata: { name: payments, namespace: pay }
+spec:
+  selector: { matchLabels: { app: payments } }
+  podTargetLabels: [rollouts-pod-template-hash]    # so metrics say which version each pod runs
+  endpoints: [{ port: http, interval: 15s }]
+---
+# Synthetic users for payments, as for checkout.
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: loadgen, namespace: pay }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: loadgen } }
+  template:
+    metadata: { labels: { app: loadgen } }
+    spec:
+      containers:
+        - name: loadgen
+          image: curlimages/curl:8.17.0
+          env: [{ name: TARGET, value: "http://payments.pay:9898" }]
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                i=1
+                while [ $i -le 100 ]; do
+                  curl -s -o /dev/null --max-time 5 "${TARGET}/" &
+                  i=$((i + 1)); sleep 0.05
+                done
+                wait
+              done
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }

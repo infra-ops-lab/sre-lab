@@ -19,6 +19,28 @@ nav:
       - Lesson: 02-observability/index.md
       - Lab: 02-observability/lab.md
       - Test yourself: 02-observability/test-yourself.md
+  - "3. Alerting and on-call":
+      - Lesson: 03-alerting/index.md
+      - Lab: 03-alerting/lab.md
+      - Runbook (example): 03-alerting/runbook-checkout.md
+      - Test yourself: 03-alerting/test-yourself.md
+  - "4. Incidents and postmortems":
+      - Lesson: 04-incidents/index.md
+      - Lab (game day): 04-incidents/lab.md
+      - Postmortem template: 04-incidents/postmortem-template.md
+      - Test yourself: 04-incidents/test-yourself.md
+  - "5. Troubleshooting Kubernetes":
+      - Lesson: 05-k8s-troubleshooting/index.md
+      - Lab: 05-k8s-troubleshooting/lab.md
+      - Test yourself: 05-k8s-troubleshooting/test-yourself.md
+  - "6. Linux and network troubleshooting":
+      - Lesson: 06-linux-network/index.md
+      - Lab: 06-linux-network/lab.md
+      - Test yourself: 06-linux-network/test-yourself.md
+  - "7. Safe change":
+      - Lesson: 07-safe-change/index.md
+      - Lab: 07-safe-change/lab.md
+      - Test yourself: 07-safe-change/test-yourself.md
   - Coming next: roadmap.md
 
 theme:

@@ -1,0 +1,54 @@
+# Module 6 lab: an "api" pod and a "toolbox" client, in namespace lab6.
+#   api: podinfo (the application) + a netshoot sidecar with NET_ADMIN (shares the pod's network,
+#        so tc/tcpdump/ss in the sidecar see the api's traffic). Uploads (POST /store) go to /data.
+#   toolbox: netshoot, the client you investigate from.
+apiVersion: v1
+kind: Namespace
+metadata: { name: lab6 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: api, namespace: lab6 }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: api } }
+  template:
+    metadata: { labels: { app: api } }
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/stefanprodan/podinfo:6.17.0
+          command: ["./podinfo", "--port=9898", "--data-path=/data", "--level=info"]
+          ports: [{ name: http, containerPort: 9898 }]
+          readinessProbe: { httpGet: { path: /readyz, port: http }, periodSeconds: 5 }
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+          volumeMounts: [{ name: data, mountPath: /data }]
+        - name: net
+          image: nicolaka/netshoot:v0.13
+          command: ["sleep", "infinity"]
+          securityContext: { capabilities: { add: [NET_ADMIN] } }
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+      volumes:
+        - name: data
+          emptyDir: { medium: Memory, sizeLimit: 32Mi }   # a small "disk" (tmpfs) for uploads
+---
+apiVersion: v1
+kind: Service
+metadata: { name: api, namespace: lab6 }
+spec:
+  selector: { app: api }
+  ports: [{ name: http, port: 80, targetPort: http }]
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: toolbox, namespace: lab6 }
+spec:
+  containers:
+    - name: toolbox
+      image: nicolaka/netshoot:v0.13
+      command: ["sleep", "infinity"]
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }

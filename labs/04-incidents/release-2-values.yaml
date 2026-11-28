@@ -1,0 +1,6 @@
+# Release 2 of checkout. The release notes say: "new checkout UI message, minor validation changes".
+# Game day: don't read the rest of this file until the postmortem.
+ui:
+  message: "Checkout v2"
+faults:
+  error: true          # the "validation change": podinfo returns random 500, 400 and 409 responses
