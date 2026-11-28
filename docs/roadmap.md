@@ -6,7 +6,7 @@ Modules are published as their labs are tested end to end.
 |---|---|---|
 | 0 | Why SRE | Published |
 | 1 | SLOs and error budgets | Published |
-| 2 | Observability | Lab being tested |
+| 2 | Observability | Published |
 | 3 | Alerting and on-call | Lab tested, lesson being written |
 | 4 | Incidents and postmortems (game day) | Lab tested, lesson being written |
 | 5 | Troubleshooting Kubernetes | Planned |

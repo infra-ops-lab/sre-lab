@@ -31,7 +31,7 @@ By the end of the course you will be able to:
 |---|---|---|
 | 0 | [Why SRE](00-why-sre/index.md) | Where SRE fits, what the industry expects, a skills self-check |
 | 1 | [SLOs and error budgets](01-slos/index.md) | SLOs for a real service with Sloth; watch the budget burn |
-| 2 | Observability *(coming soon)* | RED and USE with PromQL, a service dashboard, cardinality |
+| 2 | [Observability](02-observability/index.md) | RED and USE with PromQL, a hidden CPU limit, a dashboard as code, a cardinality explosion |
 | 3 | Alerting and on-call *(coming soon)* | Alert routing, inhibition, triaging noisy alerts, runbooks |
 | 4 | Incidents and postmortems *(coming soon)* | A game day: a bad release, incident roles, rollback, postmortem |
 | 5-12 | [Coming next](roadmap.md) | Troubleshooting, safe change, capacity, resilience, platform design, toil, culture, capstone |

@@ -1,0 +1,78 @@
+# A "cart" service whose developer added a user_id label to its metrics.
+# Every 15 seconds, 100 new users show up, up to MAX_USERS.
+# Each user creates 8 series: 1 counter + a histogram (5 buckets including +Inf, _sum, _count).
+# Fix the code with:  kubectl -n shop set env deploy/cart PER_USER_METRICS=false
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart
+  namespace: shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: cart }
+  template:
+    metadata:
+      labels: { app: cart }
+    spec:
+      containers:
+        - name: cart
+          image: busybox:1.37.0
+          env:
+            - { name: PER_USER_METRICS, value: "true" }
+            - { name: MAX_USERS, value: "3000" }
+          ports:
+            - { name: http, containerPort: 8080 }
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /www
+              users=100
+              while true; do
+                awk -v users="$users" -v per_user="$PER_USER_METRICS" 'BEGIN {
+                  print "# TYPE cart_checkouts_total counter"
+                  print "# TYPE cart_request_duration_seconds histogram"
+                  n = (per_user == "true") ? users : 1
+                  for (u = 1; u <= n; u++) {
+                    l = (per_user == "true") ? sprintf("user_id=\"u%05d\"", u) : "store=\"online\""
+                    c = u * 3
+                    printf "cart_checkouts_total{%s} %d\n", l, c
+                    printf "cart_request_duration_seconds_bucket{%s,le=\"0.05\"} %d\n", l, c * 0.6
+                    printf "cart_request_duration_seconds_bucket{%s,le=\"0.1\"} %d\n", l, c * 0.8
+                    printf "cart_request_duration_seconds_bucket{%s,le=\"0.25\"} %d\n", l, c * 0.9
+                    printf "cart_request_duration_seconds_bucket{%s,le=\"0.5\"} %d\n", l, c * 0.95
+                    printf "cart_request_duration_seconds_bucket{%s,le=\"+Inf\"} %d\n", l, c
+                    printf "cart_request_duration_seconds_sum{%s} %.2f\n", l, c * 0.08
+                    printf "cart_request_duration_seconds_count{%s} %d\n", l, c
+                  }
+                }' > /www/metrics.tmp && mv /www/metrics.tmp /www/metrics.txt
+                [ "$users" -lt "$MAX_USERS" ] && users=$((users + 100))
+                [ -f /tmp/httpd.pid ] || { httpd -p 8080 -h /www; touch /tmp/httpd.pid; }
+                sleep 15
+              done
+          resources:
+            requests: { cpu: 20m, memory: 16Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cart
+  namespace: shop
+  labels: { app: cart }
+spec:
+  selector: { app: cart }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cart
+  namespace: shop
+spec:
+  selector:
+    matchLabels: { app: cart }
+  endpoints:
+    - port: http
+      path: /metrics.txt   # busybox httpd sends Content-Type: text/plain only for known extensions
+      interval: 15s

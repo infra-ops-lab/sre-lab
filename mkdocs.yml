@@ -15,6 +15,10 @@ nav:
       - Lesson: 01-slos/index.md
       - Lab: 01-slos/lab.md
       - Test yourself: 01-slos/test-yourself.md
+  - "2. Observability":
+      - Lesson: 02-observability/index.md
+      - Lab: 02-observability/lab.md
+      - Test yourself: 02-observability/test-yourself.md
   - Coming next: roadmap.md
 
 theme:

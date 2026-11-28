@@ -1,0 +1,109 @@
+# The checkout service dashboard, as code.
+# The Grafana sidecar loads every ConfigMap labelled grafana_dashboard: "1" within about a minute.
+# Layout: is it healthy? (SLO) -> what do users see? (RED) -> is a resource the cause? (USE)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: checkout-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  checkout.json: |
+    {
+      "uid": "checkout",
+      "title": "Checkout service",
+      "tags": ["sre-lab"],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "schemaVersion": 39,
+      "panels": [
+        { "type": "row", "title": "SLO: are users OK?", "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 } },
+        {
+          "type": "stat", "title": "Availability burn rate (5m)",
+          "description": "1 = spending the budget exactly on pace. 14.4 sustained for an hour pages.",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 0, "y": 1, "w": 6, "h": 4 },
+          "fieldConfig": { "defaults": { "decimals": 1, "unit": "x",
+            "thresholds": { "mode": "absolute", "steps": [
+              { "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 6 } ] } } },
+          "targets": [ { "refId": "A", "expr": "slo:current_burn_rate:ratio{sloth_service=\"checkout\", sloth_slo=\"requests-availability\"}" } ]
+        },
+        {
+          "type": "stat", "title": "Latency burn rate (5m)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 6, "y": 1, "w": 6, "h": 4 },
+          "fieldConfig": { "defaults": { "decimals": 1, "unit": "x",
+            "thresholds": { "mode": "absolute", "steps": [
+              { "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 6 } ] } } },
+          "targets": [ { "refId": "A", "expr": "slo:current_burn_rate:ratio{sloth_service=\"checkout\", sloth_slo=\"requests-latency\"}" } ]
+        },
+        {
+          "type": "stat", "title": "SLO alerts firing",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 12, "y": 1, "w": 12, "h": 4 },
+          "options": { "textMode": "value_and_name", "colorMode": "background" },
+          "fieldConfig": { "defaults": { "noValue": "none",
+            "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null } ] } } },
+          "targets": [ { "refId": "A", "legendFormat": "{{alertname}} ({{severity}})",
+            "expr": "count by (alertname, severity) (ALERTS{alertstate=\"firing\", sloth_service=\"checkout\"})" } ]
+        },
+
+        { "type": "row", "title": "RED: what do users see?", "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 } },
+        {
+          "type": "timeseries", "title": "Rate: user requests per second, by status",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 0, "y": 6, "w": 8, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "reqps" } },
+          "targets": [ { "refId": "A", "legendFormat": "{{status}}",
+            "expr": "sum by (status) (rate(http_request_duration_seconds_count{namespace=\"shop\", path!~\"healthz|readyz|metrics\"}[1m]))" } ]
+        },
+        {
+          "type": "timeseries", "title": "Errors: share of user requests that are 5xx",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 8, "y": 6, "w": 8, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "custom": { "axisSoftMax": 0.05 } } },
+          "targets": [ { "refId": "A", "legendFormat": "5xx ratio",
+            "expr": "(sum(rate(http_request_duration_seconds_count{namespace=\"shop\", path!~\"healthz|readyz|metrics\", status=~\"5..\"}[1m])) or vector(0)) / sum(rate(http_request_duration_seconds_count{namespace=\"shop\", path!~\"healthz|readyz|metrics\"}[1m]))" } ]
+        },
+        {
+          "type": "timeseries", "title": "Duration: p50 / p90 / p99",
+          "description": "Estimated from histogram buckets (0.005, 0.01, 0.025 ... 10 s). Values between two bucket boundaries are interpolated.",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 16, "y": 6, "w": 8, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "s" } },
+          "targets": [
+            { "refId": "A", "legendFormat": "p50", "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"shop\", path!~\"healthz|readyz|metrics\"}[1m])))" },
+            { "refId": "B", "legendFormat": "p90", "expr": "histogram_quantile(0.90, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"shop\", path!~\"healthz|readyz|metrics\"}[1m])))" },
+            { "refId": "C", "legendFormat": "p99", "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"shop\", path!~\"healthz|readyz|metrics\"}[1m])))" }
+          ]
+        },
+
+        { "type": "row", "title": "USE: is a resource the cause?", "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 } },
+        {
+          "type": "timeseries", "title": "CPU used per pod (cores)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 0, "y": 15, "w": 8, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "short", "min": 0 } },
+          "targets": [ { "refId": "A", "legendFormat": "{{pod}}",
+            "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"shop\", container=\"podinfo\"}[1m]))" } ]
+        },
+        {
+          "type": "timeseries", "title": "Memory working set per pod",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 8, "y": 15, "w": 8, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "bytes", "min": 0 } },
+          "targets": [ { "refId": "A", "legendFormat": "{{pod}}",
+            "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"shop\", container=\"podinfo\"})" } ]
+        },
+        {
+          "type": "timeseries", "title": "Container restarts (last 1h)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "x": 16, "y": 15, "w": 8, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "short", "min": 0, "decimals": 0 } },
+          "targets": [ { "refId": "A", "legendFormat": "{{pod}}",
+            "expr": "sum by (pod) (increase(kube_pod_container_status_restarts_total{namespace=\"shop\", container=\"podinfo\"}[1h]))" } ]
+        }
+      ]
+    }
